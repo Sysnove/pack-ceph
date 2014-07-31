@@ -1,0 +1,27 @@
+{
+    "name": "ceph",
+    "types": ["pack"],
+    "version": "1.0",
+    "homepage": "https://github.com/sysnove/pack-ceph",
+    "author": "Guillaume Subiron",
+    "description": "Ceph checks",
+    "contributors": [
+        {
+            "name": "Guillaume Subiron",
+            "email": "guillaume@sysnove.fr"
+        },
+        {
+            "name": "Alexis Lahouze",
+            "email": "alexis@sysnove.fr"
+        }
+    ],
+    "repository": "https://github.com/sysnove/pack-ceph",
+    "keywords": [
+        "pack",
+        "ceph",
+    ],
+    "dependencies": {
+        "shinken": ">=1.4"
+    },
+    "license": "AGPL"
+}
