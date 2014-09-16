@@ -108,13 +108,13 @@ def main():
 
         status = output['health']['overall_status']
 
-        perfdata = "| used_space=%sB;0;0;0;%s;" % (used, total)
-        perfdata += " degraded_objects=%s;0;0;0;%s;" % (degraded_objects, total_objects)
-        perfdata += " recovery_bytes=%sBps;" % recovering_bps
-        perfdata += " recovery_objects=%sops;" % recovering_ops
-        perfdata += " write_bytes=%sBps;" % write_bps
-        perfdata += " read_bytes=%sBps;" % read_bps
-        perfdata += " ops=%sops;" % ops
+        perfdata = "| used_space=%sB;;;0;%s;" % (used, total)
+        perfdata += " degraded_objects=%s;;;0;%s;" % (degraded_objects, total_objects)
+        perfdata += " recovery_bytes=%sB/s;" % recovering_bps
+        perfdata += " recovery_objects=%so/s;" % recovering_ops
+        perfdata += " write_bytes=%sB/s;" % write_bps
+        perfdata += " read_bytes=%sB/s;" % read_bps
+        perfdata += " ops=%sop/s;" % ops
         perfdata += " num_pg=%spgs;" % num_pgs
         for state in ['active+clean',
                       'active+remapped+wait_backfill',
