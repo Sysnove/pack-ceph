@@ -96,8 +96,8 @@ def main():
         total = output['pgmap']['bytes_total']
         degraded_objects = output['pgmap'].get('degraded_objects', 0)
         total_objects = output['pgmap'].get('degraded_total', 0)
-        recovering_bps = output['pgmap'].get('recovering_bytes_per_second', 0)
-        recovering_ops = output['pgmap'].get('recovering_objects_per_second', 0)
+        recovering_bps = output['pgmap'].get('recovering_bytes_per_sec', 0)
+        recovering_ops = output['pgmap'].get('recovering_objects_per_sec', 0)
         write_bps = output['pgmap'].get('write_bytes_sec', 0)
         read_bps = output['pgmap'].get('read_bytes_sec', 0)
         ops = output['pgmap'].get('op_per_sec', 0)
