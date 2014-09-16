@@ -1,0 +1,152 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# vim: ai ts=4 sts=4 et sw=4 nu
+
+#
+#         DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+#                 Version 2, December 2004
+#
+# Copyright 2014 copyright Guillaume Subiron <guillaume@sysnove.fr>
+#
+# Everyone is permitted to copy and distribute verbatim or modified
+# copies of this license document, and changing it is allowed as long
+# as the name is changed.
+#
+#         DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+# TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+#
+#  0. You just DO WHAT THE FUCK YOU WANT TO.
+#
+
+import argparse
+import sys
+import os
+import subprocess
+import json
+
+__version__ = '1.0.0'
+
+# defauls ceph values
+CEPH_COMMAND = '/usr/bin/ceph'
+
+# nagios exit code
+STATUS_OK = 0
+STATUS_WARNING = 1
+STATUS_ERROR = 2
+STATUS_UNKNOWN = 3
+
+
+def main():
+    # parse args
+    parser = argparse.ArgumentParser(description="'ceph health' nagios plugin.")
+    parser.add_argument('-e', '--exe', help='ceph executable [%s]' % CEPH_COMMAND)
+    parser.add_argument('-c', '--conf', help='alternative ceph conf file')
+    parser.add_argument('-m', '--monaddress', help='ceph monitor address[:port]')
+    parser.add_argument('-i', '--id', help='ceph client id')
+    parser.add_argument('-k', '--keyring', help='ceph client keyring file')
+    parser.add_argument('-d', '--detail', help="exec 'ceph health detail'", action='store_true')
+    parser.add_argument('-V', '--version', help='show version and exit', action='store_true')
+    args = parser.parse_args()
+
+    # validate args
+    ceph_exec = args.exe if args.exe else CEPH_COMMAND
+    if not os.path.exists(ceph_exec):
+        print("ERROR: ceph executable '%s' doesn't exist" % ceph_exec)
+        return STATUS_UNKNOWN
+
+    if args.version:
+        print('version %s' % __version__)
+        return STATUS_OK
+
+    if args.conf and not os.path.exists(args.conf):
+        print("ERROR: ceph conf file '%s' doesn't exist" % args.conf)
+        return STATUS_UNKNOWN
+
+    if args.keyring and not os.path.exists(args.keyring):
+        print("ERROR: keyring file '%s' doesn't exist" % args.keyring)
+        return STATUS_UNKNOWN
+
+    # build command
+    ceph_status = [ceph_exec]
+    if args.monaddress:
+        ceph_status.append('-m')
+        ceph_status.append(args.monaddress)
+    if args.conf:
+        ceph_status.append('-c')
+        ceph_status.append(args.conf)
+    if args.id:
+        ceph_status.append('--id')
+        ceph_status.append(args.id)
+    if args.keyring:
+        ceph_status.append('--keyring')
+        ceph_status.append(args.keyring)
+    ceph_status.append('status')
+    ceph_status.append('-f')
+    ceph_status.append('json')
+
+    # exec command
+    p = subprocess.Popen(ceph_status,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = p.communicate()
+
+    if output:
+        output = json.loads(output.decode())
+
+        used = output['pgmap']['bytes_used']
+        total = output['pgmap']['bytes_total']
+        degraded_objects = output['pgmap'].get('degraded_objects', 0)
+        total_objects = output['pgmap'].get('degraded_total', 0)
+        recovering_bps = output['pgmap'].get('recovering_bytes_per_second', 0)
+        recovering_ops = output['pgmap'].get('recovering_objects_per_second', 0)
+        write_bps = output['pgmap'].get('write_bytes_sec', 0)
+        read_bps = output['pgmap'].get('read_bytes_sec', 0)
+        ops = output['pgmap'].get('op_per_sec', 0)
+
+        num_pgs = output['pgmap']['num_pgs']
+        pgs_by_state = {d["state_name"]: d["count"]
+                        for d in output['pgmap']['pgs_by_state']}
+
+        status = output['health']['overall_status']
+
+        perfdata = "| used_space=%sB;0;0;0;%s;" % (used, total)
+        perfdata += " degraded_objects=%s;0;0;0;%s;" % (degraded_objects, total_objects)
+        perfdata += " recovery_bytes=%sBps;" % recovering_bps
+        perfdata += " recovery_objects=%sops;" % recovering_ops
+        perfdata += " write_bytes=%sBps;" % write_bps
+        perfdata += " read_bytes=%sBps;" % read_bps
+        perfdata += " ops=%sops;" % ops
+        perfdata += " num_pg=%spgs;" % num_pgs
+        for state in ['active+clean',
+                      'active+remapped+wait_backfill',
+                      'active+remapped+backfilling']:
+            perfdata += " %s=%spgs;" % (state, pgs_by_state.get(state, 0))
+
+        message = "; ".join([msg['summary']
+                             for msg in output['health']['summary']])
+
+        if status == 'HEALTH_OK':
+            print('HEALTH OK:', message, perfdata)
+            return STATUS_OK
+        elif status == 'HEALTH_WARN':
+            print('HEALTH WARNING:', message, perfdata)
+            return STATUS_WARNING
+        elif status == 'HEALTH_ERR':
+            print('HEALTH ERROR:', message, perfdata)
+            return STATUS_ERROR
+        else:
+            print(perfdata)
+
+    elif err:
+        # read only first line of error
+        one_line = err.split('\n')[0]
+        if '-1 ' in one_line:
+            idx = one_line.rfind('-1 ')
+            print('ERROR: %s: %s' % (ceph_exec, one_line[idx+len('-1 '):]))
+        else:
+            print(one_line)
+
+    return STATUS_UNKNOWN
+
+
+if __name__ == "__main__":
+    sys.exit(main())

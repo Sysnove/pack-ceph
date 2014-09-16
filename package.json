@@ -1,7 +1,7 @@
 {
     "name": "ceph",
     "types": ["pack"],
-    "version": "1.0",
+    "version": "1.2",
     "homepage": "https://github.com/sysnove/pack-ceph",
     "author": "Guillaume Subiron",
     "description": "Ceph checks",
