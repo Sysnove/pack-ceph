@@ -103,8 +103,6 @@ def main():
         ops = output['pgmap'].get('op_per_sec', 0)
 
         num_pgs = output['pgmap']['num_pgs']
-        pgs_by_state = {d["state_name"]: d["count"]
-                        for d in output['pgmap']['pgs_by_state']}
 
         status = output['health']['overall_status']
 
@@ -117,9 +115,16 @@ def main():
         perfdata += " ops=%sop/s;" % ops
         perfdata += " num_pg=%spgs;" % num_pgs
         for state in ['active+clean',
-                      'active+remapped+wait_backfill',
-                      'active+remapped+backfilling']:
-            perfdata += " %s=%spgs;" % (state, pgs_by_state.get(state, 0))
+                      'active+remapped',
+                      'active+degrated',
+                      #'active+clean+inconsistent',
+                      'stale',
+                      'inactive',
+                      'unclean',
+                      'down']:
+            pgs = sum([d["count"] for d in output['pgmap']['pgs_by_state']
+                                  if d["state_name"].startswith(state)])
+            perfdata += " %s=%spgs;" % (state, pgs)
 
         message = "; ".join([msg['summary']
                              for msg in output['health']['summary']])
