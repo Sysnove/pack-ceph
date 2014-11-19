@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# vim: ai ts=4 sts=4 et sw=4 nu
+
+#
+#         DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+#                 Version 2, December 2004
+#
+# Copyright 2014 copyright Guillaume Subiron <guillaume@sysnove.fr>
+#
+# Everyone is permitted to copy and distribute verbatim or modified
+# copies of this license document, and changing it is allowed as long
+# as the name is changed.
+#
+#         DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+# TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+#
+#  0. You just DO WHAT THE FUCK YOU WANT TO.
+#
+
+import argparse
+import sys
+import os
+
+__version__ = '1.0.0'
+
+# defauls ceph values
+CEPH_COMMAND = '/usr/bin/ceph'
+
+def main():
+    # parse args
+    parser = argparse.ArgumentParser(description="'ceph repair' nagios plugin.")
+    parser.add_argument('-e', '--exe', help='ceph executable [%s]' % CEPH_COMMAND)
+    parser.add_argument('-c', '--conf', help='alternative ceph conf file')
+    parser.add_argument('-m', '--monaddress', help='ceph monitor address[:port]')
+    parser.add_argument('-i', '--id', help='ceph client id')
+    parser.add_argument('-k', '--keyring', help='ceph client keyring file')
+
+    parser.add_argument('-S', '--state', required=True, help='service state')
+    parser.add_argument('-T', '--statetype', required=True, help='service statetype')
+    parser.add_argument('-A', '--attempt', required=True, help='service attempt')
+
+    parser.add_argument('-V', '--version', help='show version and exit', action='store_true')
+    args = parser.parse_args()
+
+    # validate args
+    ceph_exec = args.exe if args.exe else CEPH_COMMAND
+    if not os.path.exists(ceph_exec):
+        print("ERROR: ceph executable '%s' doesn't exist" % ceph_exec)
+        return 3
+
+    if args.version:
+        print('version %s' % __version__)
+        return 0
+
+    if args.conf and not os.path.exists(args.conf):
+        print("ERROR: ceph conf file '%s' doesn't exist" % args.conf)
+        return 3
+
+    if args.keyring and not os.path.exists(args.keyring):
+        print("ERROR: keyring file '%s' doesn't exist" % args.keyring)
+        return 3
+
+    if args.state == 'CRITICAL':
+        if args.statetype == 'HARD' or int(args.attempt) > 1:
+            # build command
+            ceph_command = ceph_exec
+            if args.monaddress:
+                ceph_command += ' -m '
+                ceph_command += args.monaddress
+            if args.conf:
+                ceph_command += ' -c '
+                ceph_command += args.conf
+            if args.id:
+                ceph_command += ' --id '
+                ceph_command += args.id
+            if args.keyring:
+                ceph_command += ' --keyring '
+                ceph_command += args.keyring
+            ceph_command += ' pg'
+            full_command = '%s dump | grep -i incons | cut -f 1 | while read a; do %s repair $a & done' % (ceph_command, ceph_command)
+
+            # exec command
+            os.system(full_command)
+
+if __name__ == "__main__":
+    sys.exit(main())
