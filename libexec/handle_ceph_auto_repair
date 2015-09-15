@@ -41,6 +41,7 @@ def main():
     parser.add_argument('-A', '--attempt', required=True, help='service attempt')
 
     parser.add_argument('-V', '--version', help='show version and exit', action='store_true')
+
     args = parser.parse_args()
 
     # validate args
@@ -61,7 +62,7 @@ def main():
         print("ERROR: keyring file '%s' doesn't exist" % args.keyring)
         return 3
 
-    if args.state == 'CRITICAL':
+    if args.state == 'DOWN':
         if args.statetype == 'HARD' or int(args.attempt) > 1:
             # build command
             ceph_command = ceph_exec
